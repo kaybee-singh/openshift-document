@@ -17,7 +17,10 @@ $ htpasswd -B -b ~/htconfigure/htpasswd dean redhat
 $ htpasswd -B -b ~/htconfigure/htpasswd bob redhat
 
 ```
-
+3. Create Secret for htpasswd
+```bash
+$ oc create secret generic htpasswd-secret --from-file htpasswd=~/htconfigure/htpasswd -n openshift-config
+```
 3. Add required roles to the users.
 
 
@@ -43,7 +46,7 @@ spec:
   identityProviders:
   - htpasswd:
       fileData:
-        name: localusers
+        name: htpasswd-secret
     mappingMethod: claim
     name: myusers
     type: HTPasswd
