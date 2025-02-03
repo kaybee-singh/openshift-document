@@ -1,0 +1,22 @@
+Integrate Active Directory with Openshift oauth authentication
+
+Oauth configuration file should have following content
+```bash
+  - ldap:
+      attributes:
+        email: []
+        id:
+        - sAMAccountName
+        name:
+        - cn
+        preferredUsername:
+        - sAMAccountName
+      bindDN: cn=dean,dc=example,dc=com
+      bindPassword:
+        name: ldap-bind-password-tct24
+      insecure: true
+      url: ldap://192.168.122.194/DC=example,DC=com?sAMAccountName?sub?
+    mappingMethod: claim
+    name: ldap-id
+    type: LDAP
+```
