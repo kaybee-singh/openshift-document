@@ -1,39 +1,61 @@
-# Network Policy in Openshift
+# Network Policy in OpenShift
 
-1. To isolate pods, network policy can be used. It can isolate pods from other pods running in the same namespace and other namespaces.
-2. To configure network policy one does not need admin privileges. It gives developers more control over application.
-3. It controls access between pods on the basis of labels if compared with traditional firewall which uses ip address for this.
+## 1. Overview
 
-First lets see how to label a namespace. Following command with further parameters can be used to set it.
+- NetworkPolicy is used to **isolate pods** from other pods within the same namespace or across different namespaces.
+- It can be configured **without admin privileges**, giving developers more control over application traffic.
+- It controls access **based on labels**, unlike traditional firewalls that rely on IP addresses.
+
+---
+
+## 2. Labeling a Namespace
+
+To set a label on a namespace:
+
 ```bash
 oc label namespace
 ```
-For instance with below command we are setting label on **test** namespace
+
+For example, to label the `test` namespace:
+
 ```bash
 oc label namespace test network=network-isolation
 ```
-### Different network policies implementations.
 
-1. Denying all the traffic for a namespace. Following policy will deny all the traffic to pods, including pods in the same namespace and other namespaces.
-Create two projects
+---
+
+## 3. Deny All Traffic to Pods in a Namespace
+
+### 3.1 Create Two Projects
+
 ```bash
 oc new-project pol1
 oc new-project pol2
 ```
-Create two deployments with httpd image in pol1
+
+### 3.2 Create Deployments in pol1
+
 ```bash
 oc project pol1
 oc create deployment httpd1-pol1 --image=registry.redhat.io/rhel8/httpd-24
 oc create deployment httpd2-pol1 --image=registry.redhat.io/rhel8/httpd-24
 ```
-Get the Pod IP details
+
+### 3.3 Get Pod IPs
+
 ```bash
 oc get pods -o wide
+```
+
+Sample output:
+```
 NAME                           READY   STATUS    RESTARTS   AGE    IP             NODE                  NOMINATED NODE   READINESS GATES
 httpd1-pol1-776f659d5f-j82pv   1/1     Running   0          2m5s   10.131.0.232   worker-0.example.com   <none>           <none>
 httpd2-pol1-67c7bff97b-q7g4p   1/1     Running   0          73s    10.131.0.233   worker-0.example.com   <none>           <none>
 ```
-Try to curl httpd1-pol1 from httpd2-pol1 with IP address of httpd1-pol1 pod fetched from above command. It will work
+
+### 3.4 Test Connectivity (Expected: Success)
+
 ```bash
 oc rsh httpd2-pol1-776f659d5f-j82pv
 sh-4.4$ curl 10.131.0.232:8080
@@ -41,8 +63,12 @@ sh-4.4$ curl 10.131.0.232:8080
 Output Omitted
 </head>
 ```
-Now create below network policy in a file denyall.yaml
-```bash
+
+### 3.5 Apply Deny-All Policy
+
+Create `denyall.yaml`:
+
+```yaml
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
@@ -51,33 +77,28 @@ spec:
   podSelector: {}
   ingress: []
 ```
-Apply the policy
+
+Apply the policy:
+
 ```bash
 oc apply -f denyall.yaml
 ```
-Now again try to access the httpd1-pol1 pod from httpd2-pol1 with curl. It will fail this time. So our network policy is working as expected.
+
+### 3.6 Test Connectivity Again (Expected: Blocked)
+
 ```bash
 oc rsh httpd2-pol1-776f659d5f-j82pv
 sh-4.4$ curl 10.131.0.232:8080
 ^C
 ```
-To only allow traffic from same namespace in which we are creating the policy.
 
-```bash
-kind: NetworkPolicy
-apiVersion: networking.k8s.io/v1
-metadata:
-  name: allow-from-same-namespace
-spec:
-  podSelector: {}
-  ingress:
-  - from:
-    - podSelector: {}
-```
-### 3. Now allow traffice from all the pods in pol1 namespace.
+---
 
-3.1 Create a new policy with name allow-pol1.yaml
-```bash
+## 5. Allow Traffic from All Pods in pol1
+
+### 5.1 Create Policy `allow-pol1.yaml`
+
+```yaml
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
@@ -88,11 +109,15 @@ spec:
   - from:
     - podSelector: {}
 ```
-3.2 Now apply the yaml file.
+
+### 5.2 Apply Policy
+
 ```bash
 oc apply -f allow-pol1.yaml
 ```
-3.3 Now check the communication to httpd1-pol1 pod from httpd2-pol1.
+
+### 5.3 Test Communication
+
 ```bash
 oc rsh httpd2-pol1-776f659d5f-j82pv
 sh-4.4$ curl 10.131.0.232:8080
@@ -100,50 +125,62 @@ sh-4.4$ curl 10.131.0.232:8080
 Output Omitted
 </head>
 ```
-### 4. Create the policy to allow traffic from pol2 pods.
-4.1 Create two deployments in pol2 namespace.
+
+---
+
+## 6. Allow Traffic from Specific Namespace and Pod
+
+### 6.1 Create Deployments in pol2
+
 ```bash
 oc project pol2
 oc create deployment httpd1-pol2 --image=registry.redhat.io/rhel8/httpd-24
 oc create deployment httpd2-pol2 --image=registry.redhat.io/rhel8/httpd-24
 ```
-4.2 Try to access the httpd-pol1 from httpd1-pol2 pod. 
-=> For this first lets get the IP address of httpd-pol1
+
+### 6.2 Test Communication to pol1 (Expected: Blocked)
+
+Get pol1 Pod IPs:
 ```bash
 oc get pods -o wide -n pol1
+```
+
+Sample output:
+```
 NAME                           READY   STATUS    RESTARTS   AGE    IP             NODE                  NOMINATED NODE   READINESS GATES
 httpd1-pol1-776f659d5f-j82pv   1/1     Running   0          2m5s   10.131.0.232   worker-0.example.com   <none>           <none>
 httpd2-pol1-67c7bff97b-q7g4p   1/1     Running   0          73s    10.131.0.233   worker-0.example.com   <none>           <none>
 ```
-=> Now try to curl the httpd-pol1 IP address from httpd1-pol2 pod. It would not work so close with Ctrl+C
+
+Try from pol2:
 ```bash
-oc get pods
-NAME                           READY   STATUS    RESTARTS   AGE
-httpd1-pol2-547ccfdb4b-fp5gs   1/1     Running   0          32s
-httpd2-pol2-7d55756789-gvq7c   1/1     Running   0          13s
 oc rsh httpd1-pol2-547ccfdb4b-fp5gs
 sh-4.4$ curl 10.131.0.232:8080
 ^C
 ```
-Set label on pol2, we will use it in the network-policy yaml.
+
+### 6.3 Label Namespace and List Pod Labels
+
 ```bash
 oc label namespace pol2 project=pol2
-```
-List tha pod labels for both namespaces.
-```bash
-oc get pods -n pol1 --show-labels          
-NAME                           READY   STATUS    RESTARTS   AGE   LABELS
-httpd1-pol1-776f659d5f-j82pv   1/1     Running   0          61m   app=httpd1-pol1,pod-template-hash=776f659d5f
-httpd2-pol1-67c7bff97b-q7g4p   1/1     Running   0          60m   app=httpd2-pol1,pod-template-hash=67c7bff97b
+oc get pods -n pol1 --show-labels
 oc get pods -n pol2 --show-labels
-NAME                           READY   STATUS    RESTARTS   AGE   LABELS
-httpd1-pol2-547ccfdb4b-fp5gs   1/1     Running   0          33m   app=httpd1-pol2,pod-template-hash=547ccfdb4b
-httpd2-pol2-7d55756789-gvq7c   1/1     Running   0          32m   app=httpd2-pol2,pod-template-hash=7d55756789
 ```
-We can use app=httpd1-pol1 and app=httpd1-pol2 for pods respectively. 
-Here httpd1-pol1 is sourcem we are creating the policy in httpd1-pol1's namespace. Destination is httpd2-pol2 we are creating the policy to allow for that pod from pol2 namespace.
-4.3 Lets create the allow-httpd1-pol2.yaml policy file to allow Traffic to httpd-pol1 from httpd1-pol2 pod.
-```bash
+
+Sample output:
+```
+NAMESPACE: pol1
+httpd1-pol1-776f659d5f-j82pv   app=httpd1-pol1
+httpd2-pol1-67c7bff97b-q7g4p   app=httpd2-pol1
+
+NAMESPACE: pol2
+httpd1-pol2-547ccfdb4b-fp5gs   app=httpd1-pol2
+httpd2-pol2-7d55756789-gvq7c   app=httpd2-pol2
+```
+
+### 6.4 Create `allow-httpd1-pol2.yaml`
+
+```yaml
 kind: NetworkPolicy
 apiVersion: networking.k8s.io/v1
 metadata:
@@ -164,20 +201,18 @@ spec:
       - port: 8080
         protocol: TCP
 ```
-Now apply the yaml and then check the pod access.
+
+### 6.5 Apply and Test
+
 ```bash
+oc project pol1
 oc apply -f allow-httpd1-pol2.yaml
 oc project pol2
-```
-Take shell of httpd1-pol2 pod and try to curl IP address of httpd1-pol1
-```bash
-oc get pods
-NAME                           READY   STATUS    RESTARTS   AGE   
-httpd1-pol2-547ccfdb4b-fp5gs   1/1     Running   0          33m   
-httpd2-pol2-7d55756789-gvq7c   1/1     Running   0          32m
 oc rsh httpd1-pol2-547ccfdb4b-fp5gs
 sh-4.4$ curl 10.131.0.232:8080
 <head>
 Output Omitted
 </head>
 ```
+
+---
