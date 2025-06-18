@@ -1,14 +1,11 @@
----
-
 ## Task 1 - First lets try to create a simple Template file without any parameters. We will create the resources from the template. This template file will create a simple deployment.
-
 
 - Create the template yaml file.
 ```bash
 vim template-1.yaml
 ```
-Below is file
-```bash
+- Below is file  
+```yaml
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
@@ -57,7 +54,7 @@ Required - Set the Required field in the parameter to True
 Openshift can also generate random values for the parameters if used `generate: random` setting.
 
 - In below yaml file we have a parameter specified. Parameter name is DEPLOY_NAME. If we do not specify the parameter while running the template then there is a value specified as defaultname.
-```bash
+```yaml
 apiVersion: template.openshift.io/v1
 kind: Template
 metadata:
