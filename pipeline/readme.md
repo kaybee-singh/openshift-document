@@ -1,4 +1,4 @@
-### Openshift Pipelines
+# Openshift Pipelines
 
 Openshift pipeline is a CICD solution based on Tekton pipelines.
 
@@ -76,4 +76,51 @@ tkn pipelinerun list
 ```
 ```bash
 tkn pipelinerun logs run1
+```
+
+# Task2 - Using workspaces in pipeline
+
+## Workspace is a shared storage volume used to tasks so that they can shared pass data between each other. It is like a shared folder.
+
+We need to define workspace at below places:-
+
+1. task - It declares that task expects a workspace.
+
+```yaml
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: list
+      image: busybox
+      script: |
+        ls -l $(workspaces.source.path)
+```
+3. pipeline - Declares a named workspace and connects it to the task.
+```yaml
+spec:
+  workspaces:
+    - name: shared
+  tasks:
+    - name: show-files
+      taskRef:
+        name: show-task
+      workspaces:
+        - name: source         # 👈 task's workspace
+          workspace: shared    # 👈 pipeline's workspace
+```
+
+5. pipelinerun - Provides the actual volume(PVC, dir) which will be then attached to the task
+```yaml
+spec:
+  workspaces:
+    - name: shared
+      volumeClaimTemplate:
+        metadata:
+          name: shared-pvc
+        spec:
+          accessModes: ["ReadWriteOnce"]
+          resources:
+            requests:
+              storage: 500Mi
 ```
