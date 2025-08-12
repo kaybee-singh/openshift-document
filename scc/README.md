@@ -64,3 +64,48 @@ oc get namespace new -o yaml | grep pod-security.kubernetes.io
     pod-security.kubernetes.io/warn: restricted
     pod-security.kubernetes.io/warn-version: latest
 ```
+To fetch scc used by the pod run below.
+```bash
+ oc get pod nginx -o jsonpath='{.metadata.annotations.openshift\.io/scc}
+anyuid
+```
+If we login with a non-admin user and try to run the same nginx pod then it will fail with permission error.
+```bash
+oc login -u bob -p redhat
+oc new-project bob
+oc run bobnginx --image=docker.io/nginx
+oc get pods bobnginx
+NAME       READY   STATUS             RESTARTS      AGE
+bobnginx   0/1     CrashLoopBackOff   6 (72s ago)   7m49s
+```
+If we look at pod logs then permission denied error is visible
+```bash
+oc logs bobnginx
+2025/08/12 06:11:32 [warn] 1#1: the "user" directive makes sense only if the master process runs with super-user privileges, ignored in /etc/nginx/nginx.conf:2
+nginx: [warn] the "user" directive makes sense only if the master process runs with super-user privileges, ignored in /etc/nginx/nginx.conf:2
+2025/08/12 06:11:32 [emerg] 1#1: mkdir() "/var/cache/nginx/client_temp" failed (13: Permission denied)
+nginx: [emerg] mkdir() "/var/cache/nginx/client_temp" failed (13: Permission denied)
+```
+This pod id created with restricted-v2 which can be checked with below command.
+```bash
+oc get pod bobnginx -o jsonpath='{.metadata.annotations.openshift\.io/scc}'
+restricted-v2
+```
+FAQs
+
+Which SCC is used for pods?
+Most pods will have the `restricted-v2` SCC by default. This SCC provides the limited access to resources. 
+
+Why container images pushed from docker.io and other third party registeries fail to run on Openshift?
+
+Those images when executed with a non-admin user may fail as those will be started with `restricted-v2` SCC. If a container image requires running the process with a particular user ID then it may fail because restricted-v2 runs the container by using a random user id.
+
+How to set SCC for a pod?
+It is not possible to set SCC for a Pod. To do it we need to create a new service account. Then associate that particular SCC with that service account.
+In below example we have added the anyuid to the testsa service account.
+NOTE:- Only cluster admins can assign/remove SCC to a service account.
+```bash
+oc create serviceaccount testsa
+oc adm policy add-scc-to-user anyuid -z testsa
+```
+How to set 
