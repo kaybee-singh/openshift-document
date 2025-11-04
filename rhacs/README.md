@@ -22,5 +22,13 @@ After installation an admin user is created and its password is saved in a secre
 
 oc get secret central-htpasswd -n stackrox
 
-To change the password of user we can created a new secret and provide in the central configuration.
+To change the password of user we can create a new secret and provide in the central configuration.
+
+Architecture:-
+
+Central provides the WebUI, API to show vulnerability, compliance and scan results. It is usually active on one cluster and communicates with other cluster by securedcluster.
+
+Secured cluster should be installed on every cluster that RHACS manages.
+
+RHACS has two main components. Central and Scanner. Scanner is based on stackrox.
 
