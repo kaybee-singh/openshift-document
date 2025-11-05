@@ -1,0 +1,99 @@
+1. In openshift vector is used to collect the logs. In earlier versions fluentd was used.
+2. To enable logs collection we have to install the openshift logging operator.
+3. Openshift logging can forward logs to external sources like suplunk, amazon cloud watch, rsyslog as well.
+4. Openshift can gather infrastructure, audit or applications logs.
+5. By default audit logs are not collected by openshift logging.
+6. After installing the logging operator we have to create a custom resource for cluster logging, the name should be **instance** only.
+```bash
+apiVersion: logging.openshift.io/v1
+kind: ClusterLogging
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  managementState: Managed
+  collection:
+    type: vector
+```
+7. To forward the logs to external systems we must configure the clusterloogforwarder resource.
+
+In logforwarder we have to create a pipeline by specifying the input and output.
+
+We can also filter the logs by using the namespace selectors if you do not want to forward all the logs.
+```bash
+apiVersion: logging.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  pipelines:
+    - name: forward-to-external
+      inputRefs:
+        - application
+        - infrastructure
+        - audit
+      outputRefs:
+        - remote-syslog
+  outputs:
+    - name: remote-syslog
+      type: syslog
+      syslog:
+        facility: local0
+        payloadKey: message
+        rfc: RFC5424
+      url: tcp://syslog.example.com:514
+  inputs:
+    - name: my-app-logs
+      application:
+        selector:
+          matchLabels:
+            app: my-app
+
+```
+Log retention.
+
+By default logs are stored on local disk and those are ephemeral. These pods can be deleted by garbage collector to free space.
+
+Openshift logging use graffana loki to place logs in a central place in the cluster.
+
+After installing the operator we have to create the lokistack instance and specify below things.
+
+1. Storage class
+2. Tshirt Size under size
+3. Logging retention under limits
+4. A secret under storage to pass the S3 bucket details.
+
+To configure openshift logging to forward logs to lokistack we have to configure below in clusterlogging instance.
+```bash
+apiVersion: logging.openshift.io/v1
+kind: ClusterLogging
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  managementState: Managed
+  logStore:
+    type: lokistack
+    lokistack:
+      name: logging-loki
+  collection:
+    type: vector
+```
+To include the audit logs create the clusterlogforwarder instance
+```bash
+apiVersion: logging.openshift.io/v1
+kind: ClusterLogForwarder
+metadata:
+  name: instance
+  namespace: openshift-logging
+spec:
+  pipelines:
+  - name: all-to-default
+    inputRefs:
+    - infrastructure
+    - application
+    - audit
+    outputRefs:
+    - default
+```
