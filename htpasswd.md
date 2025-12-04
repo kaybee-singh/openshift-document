@@ -10,31 +10,29 @@ A brief description of what this project does and who it's for
 2. To deploy this project run
 
 ```bash
-$ mkdir ~/htconfigure/
-$ htpasswd -c -B -b ~/htconfigure/htpasswd admin redhat
-$ htpasswd -B -b ~/htconfigure/htpasswd test redhat
-$ htpasswd -B -b ~/htconfigure/htpasswd dean redhat
-$ htpasswd -B -b ~/htconfigure/htpasswd bob redhat
-
+mkdir ~/htconfigure/
+htpasswd -c -B -b ~/htconfigure/htpasswd admin redhat
+htpasswd -B -b ~/htconfigure/htpasswd test redhat
+htpasswd -B -b ~/htconfigure/htpasswd dean redhat
+htpasswd -B -b ~/htconfigure/htpasswd bob redhat
 ```
 3. Create Secret for htpasswd
 ```bash
-$ oc create secret generic htpasswd-secret --from-file htpasswd=~/htconfigure/htpasswd -n openshift-config
+oc create secret generic htpasswd-secret --from-file htpasswd=~/htconfigure/htpasswd -n openshift-config
 ```
 3. Add required roles to the users.
 
 
 ```bash
-$ oc adm policy add-cluster-role-to-user cluster-admin admin
-$ oc adm policy add-cluster-role-to-user cluster-admin sam
-$ oc adm policy add-cluster-role-to-user cluster-admin dean
-
+oc adm policy add-cluster-role-to-user cluster-admin admin
+oc adm policy add-cluster-role-to-user cluster-admin sam
+oc adm policy add-cluster-role-to-user cluster-admin dean
 ```
 
 4. Fetch the oauth
 
 ```bash
-$ oc get oauth cluster -o yaml > ~/htconfigure/oauth.yaml
+oc get oauth cluster -o yaml > ~/htconfigure/oauth.yaml
 
 ```
 
@@ -57,8 +55,7 @@ spec:
 6. Replace the oauth content.
 
 ```bash
-$ oc replace -f oauth.yaml
-
+oc replace -f oauth.yaml
 ```
 ## Authors
 
