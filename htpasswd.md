@@ -29,15 +29,18 @@ oc adm policy add-cluster-role-to-user cluster-admin sam
 oc adm policy add-cluster-role-to-user cluster-admin dean
 ```
 
-4. Fetch the oauth
+4. Oauth backup
 
 ```bash
 oc get oauth cluster -o yaml > ~/htconfigure/oauth.yaml
 
 ```
 
-5. Edit spec section and edit it to look like below.
-
+5. Edit Oauth file
+```bash
+oc edit oauth/cluster
+```
+7. Edit spec section and edit it to look like below.
 
 ```bash
 spec:
@@ -52,11 +55,11 @@ spec:
 
 ```
 
-6. Replace the oauth content.
-
+6. Wait for oauth pods to restart
 ```bash
-oc replace -f oauth.yaml
+oc get pods -n openshift-authentication
 ```
+
 ## Authors
 
 - [@kaybee-singh](https://www.github.com/kaybee-singh)
